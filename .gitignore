@@ -1,0 +1,4 @@
+artifacts/
+desktop-helper/bin/
+desktop-helper/obj/
+node_modules/

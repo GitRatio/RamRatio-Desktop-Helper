@@ -1,0 +1,67 @@
+name: Build and release Desktop Helper
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish tested unsigned preview packages
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {runtime: win-x64, runner: windows-latest, test: true}
+          - {runtime: win-arm64, runner: windows-latest, test: false}
+          - {runtime: osx-x64, runner: macos-15-intel, test: true}
+          - {runtime: osx-arm64, runner: macos-15, test: true}
+          - {runtime: linux-x64, runner: ubuntu-24.04, test: true}
+          - {runtime: linux-arm64, runner: ubuntu-24.04-arm, test: true}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: {dotnet-version: '10.0.x'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - shell: pwsh
+        run: ./tools/package.ps1 -Runtime ${{ matrix.runtime }}
+      - if: matrix.test
+        shell: pwsh
+        run: |
+          $suffix = if ($IsWindows) { '.exe' } else { '' }
+          node tools/test-helper.mjs "artifacts/${{ matrix.runtime }}/RamRatio.DesktopHelper.Setup$suffix"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ matrix.runtime }}
+          path: |
+            artifacts/*.zip
+            artifacts/*.tar.gz
+            artifacts/SHA256SUMS-*.txt
+  release:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+      - name: Publish preview with matching source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="helper-0.2.0-preview.${{ github.run_number }}"
+          git archive --format=zip --output=release-assets/RamRatio-DesktopHelper-source.zip HEAD
+          sha256sum release-assets/RamRatio-DesktopHelper-source.zip > release-assets/SHA256SUMS-source.txt
+          gh release create "$tag" release-assets/* --target "${{ github.sha }}" --title "Desktop Helper 0.2.0 preview" --notes-file RELEASE-NOTES.md --prerelease --latest
