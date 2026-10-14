@@ -1,4 +1,4 @@
-# Desktop Helper 0.2.0 preview
+# Desktop Helper 0.2.1 preview
 
 Optional local memory measurements for RamRatio through Firefox Native Messaging. Choose your OS and processor package, extract, and run Setup. I installs/updates; U unregisters and removes the installed host. No Python, administrator/sudo access, background service, startup job, or native auto-updater.
 

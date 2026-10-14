@@ -94,7 +94,7 @@ static class UnixStats
                     { rss += long.Parse(parts[0], CultureInfo.InvariantCulture) * 1024; count++; }
                 }
             }
-            return new { ok = true, platform = OperatingSystem.IsMacOS() ? "macOS" : "Linux", helper_version = "0.2.0",
+            return new { ok = true, platform = OperatingSystem.IsMacOS() ? "macOS" : "Linux", helper_version = "0.2.1",
                 memory = new { total_bytes = total, available_bytes = available, used_bytes = total - available,
                     measurement = OperatingSystem.IsMacOS() ? "free-inactive-speculative-estimate" : "kernel-MemAvailable" },
                 firefox = new { rss_bytes = rss, process_count = count, skipped_process_count = skipped, measurement = "sum-of-working-sets" } };

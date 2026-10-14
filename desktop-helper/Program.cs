@@ -37,7 +37,9 @@ if (args.Contains("--host") || string.Equals(Path.GetFileNameWithoutExtension(En
 if (!OperatingSystem.IsWindows()) return UnixSetup.Run();
 Console.WriteLine("RamRatio Desktop Helper setup\nReads system memory and Firefox process memory on request. No network access, remote control, service, startup task, or administrator permission.");
 Console.WriteLine("Install writes only this user's LocalAppData/RamRatio/DesktopHelper folder and Firefox native-host registry key. It does not read browsing content, passwords, or documents. See the bundled TERMS.md and PRIVACY.md.\nPress I to install/update, U to remove, or any other key to cancel.");
-var choice = Console.ReadKey(true).Key;
+var choice = Console.IsInputRedirected
+    ? Console.ReadLine()?.Trim().ToUpperInvariant() switch { "I" => ConsoleKey.I, "U" => ConsoleKey.U, _ => ConsoleKey.Escape }
+    : Console.ReadKey(true).Key;
 try
 {
     if (choice == ConsoleKey.U)
@@ -66,7 +68,8 @@ try
     else return 0;
 }
 catch (Exception e) { Console.WriteLine("Setup failed: " + e.Message); return 1; }
-Console.WriteLine("Press any key to close."); Console.ReadKey(true); return 0;
+if (!Console.IsInputRedirected) { Console.WriteLine("Press any key to close."); Console.ReadKey(true); }
+return 0;
 
 static class Stats
 {
@@ -93,7 +96,7 @@ static class Stats
                 catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception) { skipped++; }
             }
         }
-        return new { ok = true, platform = "Windows", helper_version = "0.2.0", memory = new {
+        return new { ok = true, platform = "Windows", helper_version = "0.2.1", memory = new {
             total_bytes = memory.totalPhysical, available_bytes = memory.availablePhysical,
             used_bytes = memory.totalPhysical - memory.availablePhysical
         }, firefox = new { rss_bytes = rss, process_count = count, skipped_process_count = skipped,

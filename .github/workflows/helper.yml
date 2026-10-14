@@ -38,6 +38,14 @@ jobs:
           $suffix = if ($IsWindows) { '.exe' } else { '' }
           node tools/test-helper.mjs "artifacts/${{ matrix.runtime }}/RamRatio.DesktopHelper.Setup$suffix"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - if: matrix.test
+        shell: pwsh
+        env:
+          RAMRATIO_INSTALL_TEST: '1'
+        run: |
+          $suffix = if ($IsWindows) { '.exe' } else { '' }
+          node tools/test-installer.mjs "artifacts/${{ matrix.runtime }}/RamRatio.DesktopHelper.Setup$suffix"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         with:
           name: package-${{ matrix.runtime }}
@@ -61,7 +69,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="helper-0.2.0-preview.${{ github.run_number }}"
+          tag="helper-0.2.1-preview.${{ github.run_number }}"
           git archive --format=zip --output=release-assets/RamRatio-DesktopHelper-source.zip HEAD
           sha256sum release-assets/RamRatio-DesktopHelper-source.zip > release-assets/SHA256SUMS-source.txt
-          gh release create "$tag" release-assets/* --target "${{ github.sha }}" --title "Desktop Helper 0.2.0 preview" --notes-file RELEASE-NOTES.md --prerelease
+          gh release create "$tag" release-assets/* --target "${{ github.sha }}" --title "Desktop Helper 0.2.1 preview" --notes-file RELEASE-NOTES.md --prerelease
