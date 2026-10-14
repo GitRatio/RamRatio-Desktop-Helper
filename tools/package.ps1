@@ -9,6 +9,20 @@ $exe = Join-Path $output $exeName
 foreach ($doc in @('PRIVACY.md','TERMS.md','SECURITY.md','LICENSE-HELPER.md')) { Copy-Item -LiteralPath (Join-Path $projectRoot $doc) -Destination $output }
 Copy-Item -LiteralPath (Join-Path $projectRoot 'desktop-helper/README.md') -Destination (Join-Path $output 'README.md')
 $files = @($exeName,'README.md','PRIVACY.md','TERMS.md','SECURITY.md','LICENSE-HELPER.md')
+$assets = Get-Content -LiteralPath (Join-Path $projectRoot 'desktop-helper/obj/project.assets.json') -Raw | ConvertFrom-Json
+$runtimePackage = "Microsoft.NETCore.App.Runtime.$Runtime"
+$dependency = $assets.project.frameworks.'net10.0'.downloadDependencies | Where-Object { $_.name -eq $runtimePackage } | Select-Object -First 1
+if (!$dependency) { throw 'Cannot identify runtime license version' }
+$runtimeVersion = $dependency.version.Trim('[',']').Split(',')[0].Trim()
+$runtimeFolder = $null
+foreach ($packageRoot in $assets.packageFolders.PSObject.Properties.Name) {
+    $candidate = Join-Path $packageRoot "$($runtimePackage.ToLower())/$runtimeVersion"
+    if (Test-Path -LiteralPath (Join-Path $candidate 'LICENSE.TXT')) { $runtimeFolder = $candidate; break }
+}
+if (!$runtimeFolder) { throw 'Runtime license files missing' }
+Copy-Item -LiteralPath (Join-Path $runtimeFolder 'LICENSE.TXT') -Destination (Join-Path $output 'DOTNET-LICENSE.txt')
+Copy-Item -LiteralPath (Join-Path $runtimeFolder 'THIRD-PARTY-NOTICES.TXT') -Destination (Join-Path $output 'DOTNET-THIRD-PARTY-NOTICES.txt')
+$files += @('DOTNET-LICENSE.txt','DOTNET-THIRD-PARTY-NOTICES.txt')
 if (!$Runtime.StartsWith('win-')) {
     $launcher = if ($Runtime.StartsWith('osx-')) { 'Setup.command' } else { 'Setup.sh' }
     $script = '#!/bin/sh' + "`n" + 'set -eu' + "`n" + 'cd -- "$(dirname -- "$0")"' + "`n" + 'exec ./RamRatio.DesktopHelper.Setup' + "`n"
