@@ -64,4 +64,4 @@ jobs:
           tag="helper-0.2.0-preview.${{ github.run_number }}"
           git archive --format=zip --output=release-assets/RamRatio-DesktopHelper-source.zip HEAD
           sha256sum release-assets/RamRatio-DesktopHelper-source.zip > release-assets/SHA256SUMS-source.txt
-          gh release create "$tag" release-assets/* --target "${{ github.sha }}" --title "Desktop Helper 0.2.0 preview" --notes-file RELEASE-NOTES.md --prerelease --latest
+          gh release create "$tag" release-assets/* --target "${{ github.sha }}" --title "Desktop Helper 0.2.0 preview" --notes-file RELEASE-NOTES.md --prerelease
