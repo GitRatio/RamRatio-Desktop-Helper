@@ -25,6 +25,12 @@ Then open RamRatio settings, enable Advanced System Stats, allow Firefox's permi
 
 To remove: turn Advanced System Stats off, run the downloaded Setup again, and select U. Setup deletes the installed host and its Firefox registration. Your downloaded archive/setup, extension settings, and any empty folders remain separate. Close Firefox if Windows reports a locked helper. No recursive deletion of user folders occurs.
 
+## Diagnose or repair an installation
+
+Run the setup binary with `--diagnose` to print a small JSON report: `not-installed`, `installed`, `repair-needed`, `foreign-manifest`, or `unsafe-path`. The report contains no browsing URLs, personal files, or memory readings. Run `--version` to inspect the package version. This does **not** launch Firefox or prove its optional native permission is granted; use **Check connection** in RamRatio for that.
+
+The installer now refuses unknown native messaging registrations, foreign manifests, and symbolic-link/reparse-point installation paths. It stages changes and attempts to roll back replaced files if installation fails. Existing 0.2.1 installations with matching identifiers are eligible for an in-place repair/update. A broken or unrecognized installation may require manual inspection rather than an unsafe overwrite. Existing user folders are not recursively deleted.
+
 ## What it can and cannot do
 
 Reads aggregate system memory and Firefox process memory only. It has no network client, HTTP listener, remote-access facility, browser-command executor, process killer, document reader, or credential reader. The host accepts only a bounded `stats` request and responds through Firefox Native Messaging. OS-account permissions still apply; this is not a sandbox or a guarantee against every possible compromise.
