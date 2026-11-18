@@ -104,8 +104,10 @@ static class InstallSafety
         Directory.CreateDirectory(Path.GetDirectoryName(manifest)!);
         RejectLinkPath(host, manifest);
         var token = Guid.NewGuid().ToString("N");
-        var stagedHost = host + ".stage-" + token, stagedManifest = manifest + ".stage-" + token;
-        var backupHost = host + ".backup-" + token, backupManifest = manifest + ".backup-" + token;
+        var stagedHost = host + ".stage-" + token;
+        var stagedManifest = manifest + ".stage-" + token;
+        var backupHost = host + ".backup-" + token;
+        var backupManifest = manifest + ".backup-" + token;
         bool oldHost = File.Exists(host), oldManifest = File.Exists(manifest);
         bool hostReplaced = false, manifestReplaced = false;
         try
