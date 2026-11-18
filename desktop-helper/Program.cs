@@ -3,8 +3,6 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using Microsoft.Win32;
 
-const string hostName = "com.ratioworks.ramratio";
-const string registryPath = @"Software\Mozilla\NativeMessagingHosts\com.ratioworks.ramratio";
 if (args.Contains("--host") || string.Equals(Path.GetFileNameWithoutExtension(Environment.ProcessPath), "RamRatio.Host", StringComparison.OrdinalIgnoreCase))
 {
     using var input = Console.OpenStandardInput();
@@ -34,42 +32,8 @@ if (args.Contains("--host") || string.Equals(Path.GetFileNameWithoutExtension(En
     { Console.Error.WriteLine("Invalid native message."); return 2; }
 }
 
-if (!OperatingSystem.IsWindows()) return UnixSetup.Run();
-Console.WriteLine("RamRatio Desktop Helper setup\nReads system memory and Firefox process memory on request. No network access, remote control, service, startup task, or administrator permission.");
-Console.WriteLine("Install writes only this user's LocalAppData/RamRatio/DesktopHelper folder and Firefox native-host registry key. It does not read browsing content, passwords, or documents. See the bundled TERMS.md and PRIVACY.md.\nPress I to install/update, U to remove, or any other key to cancel.");
-var choice = Console.IsInputRedirected
-    ? Console.ReadLine()?.Trim().ToUpperInvariant() switch { "I" => ConsoleKey.I, "U" => ConsoleKey.U, _ => ConsoleKey.Escape }
-    : Console.ReadKey(true).Key;
-try
-{
-    if (choice == ConsoleKey.U)
-    {
-        Registry.CurrentUser.DeleteSubKey(registryPath, false);
-        var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RamRatio", "DesktopHelper");
-        foreach (var name in new[] { "RamRatio.Host.exe", hostName + ".json" })
-            File.Delete(Path.Combine(folder, name));
-        Console.WriteLine("Helper registration and installed host removed. Downloaded ZIP/Setup and extension settings remain yours to remove separately.");
-    }
-    else if (choice == ConsoleKey.I)
-    {
-        var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RamRatio", "DesktopHelper");
-        Directory.CreateDirectory(folder);
-        var host = Path.Combine(folder, "RamRatio.Host.exe");
-        File.Copy(Environment.ProcessPath!, host, true);
-        var manifest = Path.Combine(folder, hostName + ".json");
-        File.WriteAllText(manifest, JsonSerializer.Serialize(new {
-            name = hostName, description = "RamRatio local Windows memory statistics", path = host,
-            type = "stdio", allowed_extensions = new[] { "memory-optimizer@local" }
-        }));
-        using var key = Registry.CurrentUser.CreateSubKey(registryPath);
-        key.SetValue("", manifest);
-        Console.WriteLine("Installed. Open RamRatio settings, enable Advanced System Stats, then Check connection.");
-    }
-    else return 0;
-}
-catch (Exception e) { Console.WriteLine("Setup failed: " + e.Message); return 1; }
-if (!Console.IsInputRedirected) { Console.WriteLine("Press any key to close."); Console.ReadKey(true); }
-return 0;
+if (!OperatingSystem.IsWindows()) return UnixSetup.Run(args);
+return WindowsSetup.Run(args);
 
 static class Stats
 {
@@ -96,7 +60,7 @@ static class Stats
                 catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception) { skipped++; }
             }
         }
-        return new { ok = true, platform = "Windows", helper_version = "0.2.1", memory = new {
+        return new { ok = true, platform = "Windows", helper_version = InstallSafety.Version, memory = new {
             total_bytes = memory.totalPhysical, available_bytes = memory.availablePhysical,
             used_bytes = memory.totalPhysical - memory.availablePhysical
         }, firefox = new { rss_bytes = rss, process_count = count, skipped_process_count = skipped,
