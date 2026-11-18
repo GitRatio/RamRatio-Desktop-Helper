@@ -5,39 +5,56 @@ using System.Text.RegularExpressions;
 
 static class UnixSetup
 {
-    public static int Run()
+    private static bool IsMac => OperatingSystem.IsMacOS();
+    private static string Home => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+    private static string Folder => Path.Combine(Home, IsMac ? "Library/Application Support/RamRatio/DesktopHelper" : ".local/share/ramratio/desktop-helper");
+    private static string NativeFolder => Path.Combine(Home, IsMac ? "Library/Application Support/Mozilla/NativeMessagingHosts" : ".mozilla/native-messaging-hosts");
+    private static string Host => Path.Combine(Folder, "RamRatio.Host");
+    private static string Manifest => Path.Combine(NativeFolder, InstallSafety.HostName + ".json");
+
+    public static int Run(string[] args)
     {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        bool mac = OperatingSystem.IsMacOS();
-        if (!mac && !OperatingSystem.IsLinux()) return 1;
-        var folder = Path.Combine(home, mac ? "Library/Application Support/RamRatio/DesktopHelper" : ".local/share/ramratio/desktop-helper");
-        var native = Path.Combine(home, mac ? "Library/Application Support/Mozilla/NativeMessagingHosts" : ".mozilla/native-messaging-hosts");
-        var manifest = Path.Combine(native, "com.ratioworks.ramratio.json");
-        Console.WriteLine("RamRatio Desktop Helper\nReads system memory and Firefox process memory on request. No network, remote control, sudo, background service, or startup task. Does not read passwords, documents, or browsing content.");
-        Console.WriteLine($"Changes only:\n{folder}\n{manifest}\nSee bundled TERMS.md and PRIVACY.md.\nEnter I to install/update, U to remove, or anything else to cancel.");
+        if (!IsMac && !OperatingSystem.IsLinux()) return 1;
+        if (args.Contains("--version"))
+        {
+            Console.WriteLine(InstallSafety.Version);
+            return 0;
+        }
+        if (args.Contains("--diagnose"))
+        {
+            bool registered = File.Exists(Manifest) && InstallSafety.IsOwnedManifest(Manifest, Host);
+            Console.WriteLine(InstallSafety.Diagnose(Host, Manifest, registered));
+            return 0;
+        }
+
+        Console.WriteLine("RamRatio Desktop Helper " + InstallSafety.Version);
+        Console.WriteLine("Only local memory statistics. No remote access, network, sudo, service, or startup task.");
+        Console.WriteLine($"Install/update location: {Folder}\nFirefox manifest: {Manifest}");
+        Console.WriteLine("Review TERMS.md and PRIVACY.md. Enter I to install/repair, U to remove, or anything else to cancel.");
         string? choice = Console.ReadLine()?.Trim().ToUpperInvariant();
         try
         {
-            if (choice == "U")
+            if (choice == "I")
             {
-                File.Delete(manifest); File.Delete(Path.Combine(folder, "RamRatio.Host"));
-                Console.WriteLine("Registration and installed host removed. Extension settings and downloaded files remain.");
+                bool registered = File.Exists(Manifest) && InstallSafety.IsOwnedManifest(Manifest, Host);
+                InstallSafety.Install(Host, Manifest, Environment.ProcessPath!, registered);
+                Console.WriteLine("Installed/repaired. In RamRatio settings, enable Advanced System Stats, then Check connection.");
             }
-            else if (choice == "I")
+            else if (choice == "U")
             {
-                Directory.CreateDirectory(folder); Directory.CreateDirectory(native);
-                var host = Path.Combine(folder, "RamRatio.Host");
-                File.Copy(Environment.ProcessPath!, host, true);
-                if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(host, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-                File.WriteAllText(manifest, JsonSerializer.Serialize(new {
-                    name = "com.ratioworks.ramratio", description = "RamRatio local memory statistics", path = host,
-                    type = "stdio", allowed_extensions = new[] { "memory-optimizer@local" }
-                }));
-                Console.WriteLine("Installed. Enable Advanced System Stats in RamRatio settings, allow Firefox permission, and Check connection.");
+                bool registered = File.Exists(Manifest) && InstallSafety.IsOwnedManifest(Manifest, Host);
+                InstallSafety.Remove(Host, Manifest, registered);
+                Console.WriteLine("Unregistered and removed installed host. Your other files and extension settings remain.");
             }
             return 0;
         }
-        catch (Exception e) { Console.Error.WriteLine("Setup failed: " + e.Message); return 1; }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidOperationException
+                                        or System.Security.SecurityException)
+        {
+            Console.Error.WriteLine("Setup failed: " + e.Message);
+            Console.Error.WriteLine("Use --diagnose to inspect the installation.");
+            return 1;
+        }
     }
 }
 
@@ -94,7 +111,7 @@ static class UnixStats
                     { rss += long.Parse(parts[0], CultureInfo.InvariantCulture) * 1024; count++; }
                 }
             }
-            return new { ok = true, platform = OperatingSystem.IsMacOS() ? "macOS" : "Linux", helper_version = "0.2.1",
+            return new { ok = true, platform = OperatingSystem.IsMacOS() ? "macOS" : "Linux", helper_version = InstallSafety.Version,
                 memory = new { total_bytes = total, available_bytes = available, used_bytes = total - available,
                     measurement = OperatingSystem.IsMacOS() ? "free-inactive-speculative-estimate" : "kernel-MemAvailable" },
                 firefox = new { rss_bytes = rss, process_count = count, skipped_process_count = skipped, measurement = "sum-of-working-sets" } };

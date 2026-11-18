@@ -9,6 +9,9 @@ on:
         description: Publish tested unsigned preview packages
         type: boolean
         default: false
+concurrency:
+  group: desktop-helper-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -69,7 +72,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="helper-0.2.1-preview.${{ github.run_number }}"
+          tag="helper-0.3.0-preview.${{ github.run_number }}"
           git archive --format=zip --output=release-assets/RamRatio-DesktopHelper-source.zip HEAD
           sha256sum release-assets/RamRatio-DesktopHelper-source.zip > release-assets/SHA256SUMS-source.txt
-          gh release create "$tag" release-assets/* --target "${{ github.sha }}" --title "Desktop Helper 0.2.1 preview" --notes-file RELEASE-NOTES.md --prerelease
+          gh release create "$tag" release-assets/* --target "${{ github.sha }}" --title "Desktop Helper 0.3.0 preview" --notes-file RELEASE-NOTES.md --prerelease
