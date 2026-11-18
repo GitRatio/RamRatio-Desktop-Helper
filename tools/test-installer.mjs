@@ -54,7 +54,7 @@ if(!win){
  fs.writeFileSync(target,'preserve-this-content');
  try{
   fs.symlinkSync(target,manifest);
-  const attempted=call([],'I\\n');
+  const attempted=call([],'I\n');
   assert.notEqual(attempted.status,0,'installer must refuse linked manifest');
   assert.equal(fs.readFileSync(target,'utf8'),'preserve-this-content');
  }finally{fs.rmSync(manifest,{force:true});fs.rmSync(target,{force:true})}
