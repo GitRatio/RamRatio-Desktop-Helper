@@ -1,5 +1,7 @@
 using Microsoft.Win32;
+using System.Runtime.Versioning;
 
+[SupportedOSPlatform("windows")]
 static class WindowsSetup
 {
     private const string RegistryPath = @"Software\Mozilla\NativeMessagingHosts\com.ratioworks.ramratio";
