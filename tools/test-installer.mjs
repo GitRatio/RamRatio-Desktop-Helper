@@ -14,9 +14,9 @@ const host=path.join(folder,win?'RamRatio.Host.exe':'RamRatio.Host');
 const manifest=win?path.join(folder,'com.ratioworks.ramratio.json'):path.join(home,mac?'Library/Application Support/Mozilla/NativeMessagingHosts':'.mozilla/native-messaging-hosts','com.ratioworks.ramratio.json');
 assert.ok(!fs.existsSync(host)&&!fs.existsSync(manifest),'Refuse to replace a pre-existing installation');
 function call(args=[],input=''){return spawnSync(exe,args,{input,encoding:'utf8',timeout:15000})}
-function setup(choice){const r=call([],choice+'\\n');assert.equal(r.status,0,r.stderr+'\\n'+r.stdout);}
+function setup(choice){const r=call([],choice+'\n');assert.equal(r.status,0,r.stderr+'\n'+r.stdout);}
 function diagnose(){const r=call(['--diagnose']);assert.equal(r.status,0,r.stderr);return JSON.parse(r.stdout)}
-const version=call(['--version']);assert.equal(version.status,0);assert.match(version.stdout,/^0\\.3\\.0\\s*$/);
+const version=call(['--version']);assert.equal(version.status,0);assert.match(version.stdout,/^0\.3\.0\s*$/);
 assert.equal(diagnose().status,'not-installed');
 setup('I');
 assert.equal(diagnose().status,'installed');
@@ -33,7 +33,7 @@ const ownedManifest=fs.readFileSync(manifest,'utf8');
 const foreignManifest=JSON.stringify({...JSON.parse(ownedManifest),name:'com.example.other'});
 fs.writeFileSync(manifest,foreignManifest);
 for(const choice of ['I','U']){
- const refused=call([],choice+'\\n');
+ const refused=call([],choice+'\n');
  assert.notEqual(refused.status,0,'foreign manifest must not be changed ('+choice+')');
  assert.equal(fs.readFileSync(manifest,'utf8'),foreignManifest);
  assert.ok(fs.existsSync(host),'host must survive refused operation');
