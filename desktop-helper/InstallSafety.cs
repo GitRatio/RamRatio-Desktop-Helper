@@ -92,7 +92,7 @@ static class InstallSafety
         });
     }
 
-    internal static void Install(string host, string manifest, string source, bool hasRegistration)
+    internal static void Install(string host, string manifest, string source, bool hasRegistration, Action? register = null)
     {
         RejectLinkPath(host, manifest);
         if (File.Exists(manifest) && !IsOwnedManifest(manifest, host))
@@ -120,6 +120,7 @@ static class InstallSafety
             hostReplaced = true;
             File.Move(stagedManifest, manifest, overwrite: true);
             manifestReplaced = true;
+            register?.Invoke();
         }
         catch
         {
