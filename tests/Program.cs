@@ -12,7 +12,8 @@ static void MustRefuse(Action operation, string message)
     catch (InvalidOperationException) { return; }
     throw new Exception("Expected installer refusal: " + message);
 }
-var root = Path.Combine(Path.GetTempPath(), "ramratio-safety-" + Guid.NewGuid().ToString("N"));
+// macOS /var is a system symlink; use an isolated disposable directory under the CI account home.
+var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ramratio-safety-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(root);
 try
 {
