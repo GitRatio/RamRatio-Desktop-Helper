@@ -65,12 +65,37 @@ jobs:
         run: |
           node tools/test-windows-installer.mjs "artifacts/RamRatio-DesktopHelper-Setup-win-x64.exe"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - if: startsWith(matrix.runtime, 'osx-')
+        name: Verify macOS setup app and DMG
+        shell: pwsh
+        run: |
+          $app = "artifacts/RamRatio-DesktopHelper-Setup-${{ matrix.runtime }}.app"
+          $dmg = "artifacts/RamRatio-DesktopHelper-Setup-${{ matrix.runtime }}.dmg"
+          if (!(Test-Path -LiteralPath $dmg)) { throw "Missing macOS DMG" }
+          & plutil -lint (Join-Path $app "Contents/Info.plist")
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & sh -n (Join-Path $app "Contents/MacOS/RamRatioSetup")
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & hdiutil verify $dmg
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - if: startsWith(matrix.runtime, 'linux-')
+        name: Verify Linux one-file installer and integrity protection
+        shell: pwsh
+        run: |
+          $runFile = "artifacts/RamRatio-DesktopHelper-Setup-${{ matrix.runtime }}.run"
+          if (!(Test-Path -LiteralPath $runFile)) { throw "Missing self-extracting Linux setup" }
+          & sh $runFile --verify-payload
+          if ($LASTEXITCODE -ne 0) { throw 'Linux package integrity failed' }
+          & sh $runFile --version
+          if ($LASTEXITCODE -ne 0) { throw 'Linux bundled executable failed to start' }
       - uses: actions/upload-artifact@v6
         with:
           name: package-${{ matrix.runtime }}
           path: |
             artifacts/*.zip
             artifacts/RamRatio-DesktopHelper-Setup-win-*.exe
+            artifacts/RamRatio-DesktopHelper-Setup-osx-*.dmg
+            artifacts/RamRatio-DesktopHelper-Setup-linux-*.run
             artifacts/*.tar.gz
             artifacts/SHA256SUMS-*.txt
   release:
