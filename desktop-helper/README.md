@@ -14,8 +14,8 @@
 | --- | --- | --- |
 | Windows Intel / AMD | `RamRatio-DesktopHelper-Setup-win-x64.exe` | Double-click; choose **Install** |
 | Windows ARM64 | `RamRatio-DesktopHelper-Setup-win-arm64.exe` | Double-click; device validation remains pending |
-| Mac with Apple Silicon | `RamRatio-DesktopHelper-Setup-osx-arm64.dmg` | Open disk image, then **RamRatio Setup.app** |
-| Intel Mac | `RamRatio-DesktopHelper-Setup-osx-x64.dmg` | Open disk image, then **RamRatio Setup.app** |
+| Mac with Apple Silicon | `RamRatio-DesktopHelper-Setup-osx-arm64.dmg` or `.app.zip` | Open image or unzip, then double-click **RamRatio Setup.app** |
+| Intel Mac | `RamRatio-DesktopHelper-Setup-osx-x64.app.zip` | Unzip, then double-click **RamRatio Setup.app** |
 | Linux Intel / AMD | `RamRatio-DesktopHelper-Setup-linux-x64.run` | Run `sh RamRatio-DesktopHelper-Setup-linux-x64.run` |
 | Linux ARM64 | `RamRatio-DesktopHelper-Setup-linux-arm64.run` | Run `sh RamRatio-DesktopHelper-Setup-linux-arm64.run` |
 
