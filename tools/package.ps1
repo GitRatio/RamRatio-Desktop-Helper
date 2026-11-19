@@ -90,10 +90,19 @@ if ($Runtime.StartsWith('osx-')) {
     [IO.File]::WriteAllText((Join-Path $contents 'Info.plist'), $plist)
     & chmod +x (Join-Path $macOs 'RamRatioSetup') (Join-Path $resources $exeName)
     if ($LASTEXITCODE -ne 0) { throw 'Cannot mark macOS app launcher executable' }
-    $dmg = Join-Path $projectRoot "artifacts/RamRatio-DesktopHelper-Setup-$Runtime.dmg"
-    & hdiutil create -ov -volname 'RamRatio Desktop Helper Setup' -srcfolder $app -format UDZO $dmg
-    if ($LASTEXITCODE -ne 0) { throw 'macOS DMG build failed' }
-    $hashTargets += $dmg
+    # ZIP is the primary low-space app bundle, preserving executable bits with ditto.
+    $appZip = Join-Path $projectRoot "artifacts/RamRatio-DesktopHelper-Setup-$Runtime.app.zip"
+    & ditto -c -k --sequesterRsrc --keepParent $app $appZip
+    if ($LASTEXITCODE -ne 0) { throw 'macOS app ZIP build failed' }
+    $hashTargets += $appZip
+    # Apple's Intel runner has a constrained disk. Building a mounted DMG there
+    # may fail with ENOSPC; offer the same double-clickable app as a ZIP instead.
+    if ($Runtime -eq 'osx-arm64') {
+        $dmg = Join-Path $projectRoot "artifacts/RamRatio-DesktopHelper-Setup-$Runtime.dmg"
+        & hdiutil create -ov -volname 'RamRatio Desktop Helper Setup' -srcfolder $app -format UDZO $dmg
+        if ($LASTEXITCODE -ne 0) { throw 'macOS DMG build failed' }
+        $hashTargets += $dmg
+    }
 }
 # Linux: one downloadable self-extracting .run file, no root installer;
 # prefer zenity/kdialog dialogs when available, otherwise terminal prompt.
