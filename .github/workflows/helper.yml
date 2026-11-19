@@ -89,6 +89,8 @@ jobs:
         run: |
           $runFile = "artifacts/RamRatio-DesktopHelper-Setup-${{ matrix.runtime }}.run"
           if (!(Test-Path -LiteralPath $runFile)) { throw "Missing self-extracting Linux setup" }
+          $rawHelper = "artifacts/${{ matrix.runtime }}/RamRatio.DesktopHelper.Setup"
+          if ((Get-Item -LiteralPath $runFile).Length -ge (Get-Item -LiteralPath $rawHelper).Length) { throw 'Compressed Linux setup unexpectedly larger than raw helper' }
           & sh $runFile --verify-payload
           if ($LASTEXITCODE -ne 0) { throw 'Linux package integrity failed' }
           & sh $runFile --version
