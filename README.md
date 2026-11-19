@@ -19,7 +19,7 @@
 | Linux Intel / AMD | `RamRatio-DesktopHelper-Setup-linux-x64.run` | Run `sh RamRatio-DesktopHelper-Setup-linux-x64.run` |
 | Linux ARM64 | `RamRatio-DesktopHelper-Setup-linux-arm64.run` | Run `sh RamRatio-DesktopHelper-Setup-linux-arm64.run` |
 
-On Linux, **Zenity** or **KDialog** shows a simple action picker when available; otherwise setup uses a terminal menu. Standard glibc Linux is supported; Snap/Flatpak Firefox connections have not been verified. Alternative ZIP/tar.gz packages remain available for advanced users.
+Linux setup requires the standard `gzip` utility for unpacking and verifies the helper before running. **Zenity** or **KDialog** shows a simple action picker when available; otherwise setup uses a terminal menu. Standard glibc Linux is supported; Snap/Flatpak Firefox connections have not been verified. Alternative ZIP/tar.gz packages remain available for advanced users.
 
 > **Preview notice:** These installers are **unsigned** and the Mac app is **not notarized**. Windows SmartScreen or macOS Gatekeeper may block them. Do not disable security protections to proceed. No installer runs silently or adds browser permissions without you opting in.
 
