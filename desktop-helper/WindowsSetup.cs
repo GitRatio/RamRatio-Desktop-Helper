@@ -68,9 +68,11 @@ static class WindowsSetup
                 var previous = Registration();
                 if (previous.exists && !previous.valid)
                     throw new InvalidOperationException("A different native messaging registration is present. Refusing removal.");
-                InstallSafety.Remove(Host, Manifest, previous.valid);
-                if (previous.exists)
-                    Registry.CurrentUser.DeleteSubKey(RegistryPath, throwOnMissingSubKey: false);
+                InstallSafety.Remove(Host, Manifest, previous.valid, () =>
+                {
+                    if (previous.exists)
+                        Registry.CurrentUser.DeleteSubKey(RegistryPath, throwOnMissingSubKey: false);
+                });
                 Console.WriteLine("Helper unregistered and its installed files removed. Downloaded files and other user data remain.");
             }
             else return 0;
