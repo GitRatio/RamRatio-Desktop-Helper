@@ -109,7 +109,7 @@ static class InstallSafety
         var backupHost = host + ".backup-" + token;
         var backupManifest = manifest + ".backup-" + token;
         bool oldHost = File.Exists(host), oldManifest = File.Exists(manifest);
-        bool hostReplaced = false, manifestReplaced = false;
+        bool hostReplaced = false, manifestReplaced = false, keepBackups = false;
         try
         {
             File.Copy(source, stagedHost);
@@ -124,25 +124,53 @@ static class InstallSafety
             manifestReplaced = true;
             register?.Invoke();
         }
-        catch
+        catch (Exception installError)
         {
-            // A failure after the executable is replaced restores the earlier state.
+            // Attempt BOTH restorations even if one fails. Never delete recovery
+            // backups if recovery is incomplete: an administrator may need them.
+            var rollbackErrors = new List<Exception>();
             if (manifestReplaced)
             {
-                if (oldManifest) File.Move(backupManifest, manifest, overwrite: true);
-                else File.Delete(manifest);
+                try
+                {
+                    if (oldManifest) File.Move(backupManifest, manifest, overwrite: true);
+                    else File.Delete(manifest);
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    rollbackErrors.Add(e);
+                }
             }
             if (hostReplaced)
             {
-                if (oldHost) File.Move(backupHost, host, overwrite: true);
-                else File.Delete(host);
+                try
+                {
+                    if (oldHost) File.Move(backupHost, host, overwrite: true);
+                    else File.Delete(host);
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    rollbackErrors.Add(e);
+                }
+            }
+            if (rollbackErrors.Count > 0)
+            {
+                keepBackups = true;
+                throw new IOException(
+                    "Installation failed and rollback was incomplete. Preserve any .backup-* files for manual recovery.",
+                    new AggregateException(new[] { installError }.Concat(rollbackErrors)));
             }
             throw;
         }
         finally
         {
-            foreach (var temporary in new[] { stagedHost, stagedManifest, backupHost, backupManifest })
-                try { File.Delete(temporary); } catch (IOException) { }
+            foreach (var temporary in new[] { stagedHost, stagedManifest })
+                try { File.Delete(temporary); }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+            if (!keepBackups)
+                foreach (var backup in new[] { backupHost, backupManifest })
+                    try { File.Delete(backup); }
+                    catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
         }
     }
 
