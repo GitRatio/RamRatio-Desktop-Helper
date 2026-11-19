@@ -95,14 +95,9 @@ if ($Runtime.StartsWith('osx-')) {
     & ditto -c -k --sequesterRsrc --keepParent $app $appZip
     if ($LASTEXITCODE -ne 0) { throw 'macOS app ZIP build failed' }
     $hashTargets += $appZip
-    # Apple's Intel runner has a constrained disk. Building a mounted DMG there
-    # may fail with ENOSPC; offer the same double-clickable app as a ZIP instead.
-    if ($Runtime -eq 'osx-arm64') {
-        $dmg = Join-Path $projectRoot "artifacts/RamRatio-DesktopHelper-Setup-$Runtime.dmg"
-        & hdiutil create -ov -volname 'RamRatio Desktop Helper Setup' -srcfolder $app -format UDZO $dmg
-        if ($LASTEXITCODE -ne 0) { throw 'macOS DMG build failed' }
-        $hashTargets += $dmg
-    }
+    # Both architectures use a reliable ZIP app bundle. hdiutil's temporary
+    # mounted volume intermittently exhausts hosted macOS runner storage;
+    # a signed and notarized DMG can be added in a later stable release.
 }
 # Linux: one downloadable self-extracting .run file, no root installer;
 # prefer zenity/kdialog dialogs when available, otherwise terminal prompt.
