@@ -43,7 +43,7 @@ Preview builds are unsigned/unnotarized. macOS Gatekeeper and Windows SmartScree
 
 ## Build and contribute
 
-The public **RamRatio-Desktop-Helper** repository is the source of truth for helper binaries and releases. The private RamRatio extension repository currently retains an older helper snapshot; do not build or distribute new helper packages from that copy until it has been explicitly synchronized and tested. The Firefox extension itself does not require any source change for this installer fix.
+The public **RamRatio-Desktop-Helper** repository remains the source of truth for helper binaries and releases. The private RamRatio extension repository now contains a reviewed, pinned copy of public helper 0.3.0, with source-hash verification and an isolated .NET test workflow. Future helper changes must be deliberately synchronized and retested; publishing remains controlled from this public repository. The Firefox extension itself does not require any source change for this installer fix.
 
 With .NET SDK 10 and PowerShell, run `./tools/package.ps1 -Runtime win-x64` (or the matching Unix runtime on a Unix host). Run `node tools/test-helper.mjs artifacts/win-x64/RamRatio.DesktopHelper.Setup.exe`. The installer integration test requires explicit opt-in on a disposable CI account; do not run it on a personal workstation. Six-platform GitHub Actions builds preserve Unix executable permissions, bundle the exact .NET runtime license/notices, generate checksums, and can publish a tested preview with matching helper source.
 
