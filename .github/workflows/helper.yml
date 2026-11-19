@@ -35,6 +35,9 @@ jobs:
         with: {node-version: '24'}
       - shell: pwsh
         run: ./tools/package.ps1 -Runtime ${{ matrix.runtime }}
+      - name: Test isolated installer failure and rollback paths
+        shell: pwsh
+        run: dotnet run --project tests/InstallSafetyHarness.csproj --configuration Release
       - if: matrix.test
         shell: pwsh
         run: |
