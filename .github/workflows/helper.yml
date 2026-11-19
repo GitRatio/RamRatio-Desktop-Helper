@@ -104,7 +104,11 @@ jobs:
             artifacts/*.tar.gz
             artifacts/SHA256SUMS-*.txt
   release:
-    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    # A reviewed [publish-preview] squash-merge can publish once after every
+    # matrix job succeeds; ordinary pushes do not produce automatic releases.
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.publish) ||
+      (github.event_name == 'push' && contains(github.event.head_commit.message, '[publish-preview]'))
     needs: build
     runs-on: ubuntu-24.04
     permissions:
