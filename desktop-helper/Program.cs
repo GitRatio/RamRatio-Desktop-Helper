@@ -19,9 +19,22 @@ if (args.Contains("--host") || string.Equals(Path.GetFileNameWithoutExtension(En
             var body = new byte[size];
             input.ReadExactly(body);
             using var request = JsonDocument.Parse(body);
-            object reply = request.RootElement.ValueKind == JsonValueKind.Object &&
-                request.RootElement.TryGetProperty("type", out var type) && type.GetString() == "stats"
-                ? Stats.Read() : new { ok = false, reason = "unsupported-request" };
+            bool statsRequest = request.RootElement.ValueKind == JsonValueKind.Object &&
+                request.RootElement.TryGetProperty("type", out var type) &&
+                type.ValueKind == JsonValueKind.String && type.GetString() == "stats";
+            object reply;
+            if (statsRequest)
+            {
+                try { reply = Stats.Read(); }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException or
+                    System.ComponentModel.Win32Exception or OverflowException or FormatException or
+                    InvalidOperationException or KeyNotFoundException)
+                {
+                    Console.Error.WriteLine("Memory measurement unavailable.");
+                    reply = new { ok = false, reason = "os-measurement-unavailable" };
+                }
+            }
+            else reply = new { ok = false, reason = "unsupported-request" };
             var bytes = JsonSerializer.SerializeToUtf8Bytes(reply);
             System.Buffers.Binary.BinaryPrimitives.WriteInt32LittleEndian(header, bytes.Length);
             output.Write(header); output.Write(bytes); output.Flush();
