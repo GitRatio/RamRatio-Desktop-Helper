@@ -37,4 +37,30 @@ if (!$Runtime.StartsWith('win-')) {
     $archive = Join-Path $projectRoot "artifacts/RamRatio-DesktopHelper-$Runtime.zip"
     Compress-Archive -LiteralPath ($files | ForEach-Object { Join-Path $output $_ }) -DestinationPath $archive -Force
 }
-Get-FileHash -Algorithm SHA256 -LiteralPath $exe,$archive | ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } | Set-Content (Join-Path $projectRoot "artifacts/SHA256SUMS-$Runtime.txt")
+# Windows: create an additional self-contained GUI EXE carrying the original native host.
+$hashTargets = @($exe, $archive)
+if ($Runtime.StartsWith('win-')) {
+    $uiDir = Join-Path $projectRoot 'windows-installer'
+    $embeddedHost = Join-Path $uiDir 'NativeHost.Payload.exe'
+    $generatedHash = Join-Path $uiDir 'PayloadHash.g.cs'
+    $uiOutput = Join-Path $output 'gui'
+    $guiAsset = Join-Path $projectRoot "artifacts/RamRatio-DesktopHelper-Setup-$Runtime.exe"
+    try {
+        Copy-Item -LiteralPath $exe -Destination $embeddedHost -Force
+        $digest = (Get-FileHash -Algorithm SHA256 -LiteralPath $embeddedHost).Hash.ToUpperInvariant()
+        $generated = 'namespace RamRatioInstaller; internal static class PayloadHash { internal const string Sha256 = "' + $digest + '"; }'
+        [IO.File]::WriteAllText($generatedHash, $generated + [Environment]::NewLine)
+        dotnet publish (Join-Path $uiDir 'RamRatio.WindowsInstaller.csproj') -c Release -r $Runtime --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o $uiOutput
+        if ($LASTEXITCODE -ne 0) { throw 'Windows graphical installer build failed' }
+        $guiExe = Join-Path $uiOutput 'RamRatio-DesktopHelper-Setup.exe'
+        if (!(Test-Path -LiteralPath $guiExe)) { throw 'Graphical installer EXE not produced' }
+        Copy-Item -LiteralPath $guiExe -Destination $guiAsset -Force
+        $hashTargets += $guiAsset
+    }
+    finally {
+        Remove-Item -LiteralPath $embeddedHost,$generatedHash -Force -ErrorAction SilentlyContinue
+    }
+}
+Get-FileHash -Algorithm SHA256 -LiteralPath $hashTargets | ForEach-Object {
+    "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)"
+} | Set-Content (Join-Path $projectRoot "artifacts/SHA256SUMS-$Runtime.txt")
