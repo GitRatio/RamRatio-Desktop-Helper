@@ -22,7 +22,7 @@ This release remains an unsigned preview. A successful protocol/installation tes
 ## 0.3.0 user-friendly setup packaging (preview source)
 
 - Adds one downloadable self-contained graphical Windows setup EXE with embedded native host.
-- Adds a macOS setup app wrapped in a DMG using built-in AppleScript dialogs.
+- Adds a macOS setup app using built-in AppleScript dialogs (Apple Silicon DMG/ZIP; Intel ZIP).
 - Adds a Linux self-extracting .run with native-host digest verification, GUI selector where available and text fallback.
 - Preserves the original command-line ZIP/tar.gz formats, local-only installation and Firefox opt-in permissions.
 - Simplifies the quick-start README; advanced diagnostics and build instructions moved to docs/INSTALLATION.md.
