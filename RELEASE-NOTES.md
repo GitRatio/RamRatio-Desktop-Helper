@@ -28,3 +28,5 @@ This release remains an unsigned preview. A successful protocol/installation tes
 - Simplifies the quick-start README; advanced diagnostics and build instructions moved to docs/INSTALLATION.md.
 
 Unsigned previews are not a substitute for code-signing or macOS notarization. No stable release has been published.
+
+- Compresses the Windows single-EXE bundle and the verified embedded Linux `.run` helper to reduce downloads; integrity checking and optional user actions remain unchanged.
