@@ -57,6 +57,33 @@ try
     Require(File.ReadAllText(manifest) == foreign, "foreign manifest was changed");
     File.WriteAllBytes(manifest, savedManifest);
 
+    // An existing binary without a manifest cannot be attributed to RamRatio,
+    // even when a Windows registry key happens to point to the expected path.
+    File.Delete(manifest);
+    MustRefuse(() => InstallSafety.Install(host, manifest, source, true),
+        "registry must not authorize overwriting an orphaned executable");
+    MustRefuse(() => InstallSafety.Remove(host, manifest, true),
+        "registry must not authorize deleting an orphaned executable");
+    Require(File.ReadAllBytes(host).SequenceEqual(savedHost), "orphaned executable was changed");
+    File.WriteAllBytes(manifest, savedManifest);
+
+    // A failing registry unregistration must leave host and manifest intact.
+    var unregisterFailed = false;
+    try
+    {
+        InstallSafety.Remove(host, manifest, true,
+            () => throw new IOException("simulated registry deletion failure"));
+    }
+    catch (IOException e) when (e.Message.Contains("simulated registry deletion failure"))
+    {
+        unregisterFailed = true;
+    }
+    Require(unregisterFailed, "unregister callback failure was swallowed");
+    Require(File.ReadAllBytes(host).SequenceEqual(savedHost), "failed unregister removed host");
+    Require(File.ReadAllBytes(manifest).SequenceEqual(savedManifest), "failed unregister removed manifest");
+    Require(!Directory.EnumerateFiles(root, "*.remove-*", SearchOption.AllDirectories).Any(),
+        "failed unregister left staged removal files behind");
+
     // Simulate a missing recovery backup: rollback must attempt other restores
     // and return a distinct incomplete-recovery error rather than hide it.
     File.WriteAllText(source, "v4");
@@ -81,8 +108,12 @@ try
     File.WriteAllBytes(host, savedHost);
     File.WriteAllBytes(manifest, savedManifest);
 
-    InstallSafety.Remove(host, manifest, true);
+    bool unregisterCalled = false;
+    InstallSafety.Remove(host, manifest, true, () => unregisterCalled = true);
+    Require(unregisterCalled, "registered host was not unregistered");
     Require(!File.Exists(host) && !File.Exists(manifest), "remove left owned files");
+    Require(!Directory.EnumerateFiles(root, "*.remove-*", SearchOption.AllDirectories).Any(),
+        "successful remove left staged files");
 
     // Symlink safety, including broken symlinks and linked parent directories.
     if (!OperatingSystem.IsWindows())
@@ -101,7 +132,7 @@ try
         var linkedManifest = Path.Combine(linkedDir, InstallSafety.HostName + ".json");
         MustRefuse(() => InstallSafety.Install(host, linkedManifest, source, false), "linked parent directory");
     }
-    Console.WriteLine("PASS: install, update, rollback, incomplete recovery detection, foreign manifest, removal, and linked path safety.");
+    Console.WriteLine("PASS: install/update, registry-less host protection, failed-unregister rollback, incomplete-recovery detection, safe removal, and symlinks.");
 }
 finally
 {

@@ -97,8 +97,9 @@ static class InstallSafety
         RejectLinkPath(host, manifest);
         if (File.Exists(manifest) && !IsOwnedManifest(manifest, host))
             throw new InvalidOperationException("An unexpected native messaging manifest exists. Nothing was changed.");
-        if (File.Exists(host) && !File.Exists(manifest) && !hasRegistration)
-            throw new InvalidOperationException("An unregistered executable already exists at the helper path. Nothing was changed.");
+        // A registry pointer cannot prove an orphaned executable belongs to us.
+        if (File.Exists(host) && !File.Exists(manifest))
+            throw new InvalidOperationException("Existing host has no valid ownership manifest. Nothing was changed.");
 
         Directory.CreateDirectory(Path.GetDirectoryName(host)!);
         Directory.CreateDirectory(Path.GetDirectoryName(manifest)!);
@@ -174,15 +175,54 @@ static class InstallSafety
         }
     }
 
-    internal static void Remove(string host, string manifest, bool hasRegistration)
+    internal static void Remove(string host, string manifest, bool hasRegistration, Action? unregister = null)
     {
         RejectLinkPath(host, manifest);
-        if (File.Exists(manifest) && !IsOwnedManifest(manifest, host))
+        bool hostExists = File.Exists(host), manifestExists = File.Exists(manifest);
+        if (manifestExists && !IsOwnedManifest(manifest, host))
             throw new InvalidOperationException("Manifest does not belong to RamRatio. Refusing removal.");
-        if (File.Exists(host) && !File.Exists(manifest) && !hasRegistration)
-            throw new InvalidOperationException("Unregistered host cannot be verified. Refusing removal.");
-        // No recursive delete: never touch unrelated files or folders.
-        File.Delete(host);
-        File.Delete(manifest);
+        // A registry key naming this path alone does not establish ownership of
+        // an executable. Never remove an orphaned binary without its manifest.
+        if (hostExists && !manifestExists)
+            throw new InvalidOperationException("Host ownership cannot be verified without its manifest. Refusing removal.");
+
+        var token = Guid.NewGuid().ToString("N");
+        var stagedHost = host + ".remove-" + token;
+        var stagedManifest = manifest + ".remove-" + token;
+        bool hostStaged = false, manifestStaged = false;
+        try
+        {
+            // Rename both files out of their active locations before unregistering.
+            // If either rename or registry removal fails, restore both originals.
+            if (hostExists) { File.Move(host, stagedHost); hostStaged = true; }
+            if (manifestExists) { File.Move(manifest, stagedManifest); manifestStaged = true; }
+            unregister?.Invoke();
+        }
+        catch (Exception removeError)
+        {
+            var rollbackErrors = new List<Exception>();
+            if (manifestStaged)
+                try { File.Move(stagedManifest, manifest); }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException) { rollbackErrors.Add(e); }
+            if (hostStaged)
+                try { File.Move(stagedHost, host); }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException) { rollbackErrors.Add(e); }
+            if (rollbackErrors.Count > 0)
+                throw new IOException(
+                    "Removal failed and rollback was incomplete. Preserve any .remove-* files for manual recovery.",
+                    new AggregateException(new[] { removeError }.Concat(rollbackErrors)));
+            throw;
+        }
+
+        // There is now no active manifest (and Windows registration has been
+        // removed). A failed cleanup must never delete unrelated user files.
+        foreach (var stagedFile in new[] { stagedHost, stagedManifest })
+        {
+            try { File.Delete(stagedFile); }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                throw new IOException("Helper unregistered, but one or more .remove-* files require manual cleanup.", e);
+            }
+        }
     }
 }
