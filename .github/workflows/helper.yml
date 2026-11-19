@@ -93,7 +93,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Linux package integrity failed' }
           & sh $runFile --version
           if ($LASTEXITCODE -ne 0) { throw 'Linux bundled executable failed to start' }
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: package-${{ matrix.runtime }}
           path: |
@@ -115,7 +115,7 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           path: release-assets
           merge-multiple: true
