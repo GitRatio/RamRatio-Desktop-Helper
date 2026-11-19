@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>RamRatio-DesktopHelper-Setup</AssemblyName>
+    <RootNamespace>RamRatioInstaller</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../desktop-helper/InstallSafety.cs" Link="InstallSafety.cs" />
+    <Compile Include="../desktop-helper/WindowsHostManager.cs" Link="WindowsHostManager.cs" />
+    <EmbeddedResource Include="NativeHost.Payload.exe" LogicalName="RamRatio.NativeHost.Payload" />
+  </ItemGroup>
+</Project>
