@@ -2,3 +2,8 @@ artifacts/
 desktop-helper/bin/
 desktop-helper/obj/
 node_modules/
+
+windows-installer/bin/
+windows-installer/obj/
+windows-installer/NativeHost.Payload.exe
+windows-installer/PayloadHash.g.cs

@@ -1,50 +1,36 @@
 # RamRatio Desktop Helper
 
-An optional, on-demand helper that gives the RamRatio Firefox add-on system memory and Firefox process-memory readings. This public repository contains **helper source and downloads**, not the private extension repository.
+**Optional system-memory statistics for [RamRatio on Firefox](https://addons.mozilla.org/en-US/firefox/addon/ramratio/).** RamRatio works without the helper; install it only if you want extra local system and Firefox memory readings.
 
-**[Download helper packages](https://github.com/GitRatio/RamRatio-Desktop-Helper/releases)** · **[Install the Firefox add-on](https://addons.mozilla.org/en-US/firefox/addon/ramratio/)** · **[Report an issue or suggest an improvement](https://github.com/GitRatio/RamRatio-Desktop-Helper/issues)**
+**[Get the latest downloads](https://github.com/GitRatio/RamRatio-Desktop-Helper/releases)** · [Report an issue](https://github.com/GitRatio/RamRatio-Desktop-Helper/issues) · [Security and privacy](SECURITY.md)
 
-## Why a separate download?
+## Install in 3 steps
 
-Firefox cannot install native software silently. You download and run Setup yourself, choose Install, and separately enable Advanced System Stats in RamRatio settings. Reading or accepting an update notice does not install or enable anything. Standard tab optimization works without the helper.
+1. **Download the setup for your computer.** Use the newest *preview* release and match your processor.
+2. **Run setup and select Install / Update.** It installs for your user account; no administrator/sudo access or background service is required.
+3. **Open Firefox → RamRatio → Settings.** Enable **Advanced System Stats**, approve Firefox's native messaging permission, then press **Check connection**.
 
-## Easy installation and removal
-
-| Your computer | Package | Setup |
+| Computer | Easy setup download | How to open |
 | --- | --- | --- |
-| Windows Intel/AMD | win-x64.zip | Extract, double-click Setup.exe, press I |
-| Windows ARM | win-arm64.zip | Same; device testing still required |
-| Apple Silicon Mac | osx-arm64.tar.gz | Extract, open Setup.command, enter I |
-| Intel Mac | osx-x64.tar.gz | Same |
-| Linux Intel/AMD | linux-x64.tar.gz | Extract, run ./Setup.sh, enter I |
-| Linux ARM | linux-arm64.tar.gz | Same |
+| Windows Intel / AMD | `RamRatio-DesktopHelper-Setup-win-x64.exe` | Double-click; choose **Install** |
+| Windows ARM64 | `RamRatio-DesktopHelper-Setup-win-arm64.exe` | Double-click; device validation remains pending |
+| Mac with Apple Silicon | `RamRatio-DesktopHelper-Setup-osx-arm64.dmg` or `.app.zip` | Open image or unzip, then double-click **RamRatio Setup.app** |
+| Intel Mac | `RamRatio-DesktopHelper-Setup-osx-x64.app.zip` | Unzip, then double-click **RamRatio Setup.app** |
+| Linux Intel / AMD | `RamRatio-DesktopHelper-Setup-linux-x64.run` | Run `sh RamRatio-DesktopHelper-Setup-linux-x64.run` |
+| Linux ARM64 | `RamRatio-DesktopHelper-Setup-linux-arm64.run` | Run `sh RamRatio-DesktopHelper-Setup-linux-arm64.run` |
 
-Actual executable name: `RamRatio.DesktopHelper.Setup.exe` on Windows, `RamRatio.DesktopHelper.Setup` elsewhere. Packages carry their own .NET runtime; no Python, sudo, administrator rights, system service, or startup job is required. On Linux, if needed run `chmod +x Setup.sh RamRatio.DesktopHelper.Setup` before `./Setup.sh`. Standard glibc-based Linux distributions are intended; Alpine/musl and sandboxed Firefox require separate packaging/integration.
+On Linux, **Zenity** or **KDialog** shows a simple action picker when available; otherwise setup uses a terminal menu. Standard glibc Linux is supported; Snap/Flatpak Firefox connections have not been verified. Alternative ZIP/tar.gz packages remain available for advanced users.
 
-Then open RamRatio settings, enable Advanced System Stats, allow Firefox's permission prompt, and select Check connection. Your signed add-on ID must match `memory-optimizer@local` in this helper's native manifest; maintainers must verify this before public end-user release.
+> **Preview notice:** These installers are **unsigned** and the Mac app is **not notarized**. Windows SmartScreen or macOS Gatekeeper may block them. Do not disable security protections to proceed. No installer runs silently or adds browser permissions without you opting in.
 
-To remove: turn Advanced System Stats off, run the downloaded Setup again, and select U. Setup deletes the installed host and its Firefox registration. Your downloaded archive/setup, extension settings, and any empty folders remain separate. Close Firefox if Windows reports a locked helper. No recursive deletion of user folders occurs.
+## Update, check, or remove
 
-## Diagnose or repair an installation
+Open the **same setup application** and select **Install / Update**, **Check status**, or **Remove**. The Linux `.run` launcher also accepts `--diagnose` and `--version` in a terminal. To remove the helper, first turn off Advanced System Stats in RamRatio. Your Firefox extension, saved settings, and unrelated files remain untouched.
 
-Run the setup binary with `--diagnose` to print a small JSON report: `not-installed`, `installed`, `repair-needed`, `foreign-manifest`, or `unsafe-path`. The report contains no browsing URLs, personal files, or memory readings. Run `--version` to inspect the package version. This does **not** launch Firefox or prove its optional native permission is granted; use **Check connection** in RamRatio for that.
+If setup reports a foreign manifest, missing ownership information, or an unsafe path, it refuses to overwrite or remove the unverified file. See [troubleshooting and developer instructions](docs/INSTALLATION.md).
 
-The installer now refuses unknown native messaging registrations, foreign manifests, and symbolic-link/reparse-point installation paths. It stages changes and attempts to roll back replaced files if installation fails. Existing 0.2.1 installations with matching identifiers are eligible for an in-place repair/update. A broken or unrecognized installation may require manual inspection rather than an unsafe overwrite. If an installed executable exists but its ownership manifest is missing, **Install and Uninstall deliberately refuse to alter it**, even if a Windows registry entry points to the expected path. Uninstall stages both managed files, unregisters the Windows host inside that transaction, and restores files if unregistration fails. Any leftover `.remove-*` files after an interrupted cleanup must be reviewed manually. Existing user folders are not recursively deleted.
+## Privacy and source
 
-## What it can and cannot do
+The helper accepts only the bounded Firefox native messaging `stats` request. It provides local aggregate memory readings: **no ads, browsing-history collection, remote control, network service, or automatic updater**. Memory estimates can count shared pages more than once. See [Privacy](PRIVACY.md), [Terms](TERMS.md), [Security](SECURITY.md), [License](LICENSE-HELPER.md), and [Release notes](RELEASE-NOTES.md).
 
-Reads aggregate system memory and Firefox process memory only. It has no network client, HTTP listener, remote-access facility, browser-command executor, process killer, document reader, or credential reader. The host accepts only a bounded `stats` request and responds through Firefox Native Messaging. OS-account permissions still apply; this is not a sandbox or a guarantee against every possible compromise.
-
-Shared memory can be counted twice, other profiles can be included, and inaccessible/exited processes can be skipped. macOS availability is an estimate. There is no CPU measurement or guarantee of memory savings. See [Privacy Policy](PRIVACY.md), [Terms of Use](TERMS.md), [Security and exact installed paths](SECURITY.md), and [License](LICENSE-HELPER.md).
-
-## Preview limitations
-
-Preview builds are unsigned/unnotarized. macOS Gatekeeper and Windows SmartScreen may block them; do not disable security protections or remove quarantine automatically. Trusted signing/notarization and real Firefox integration tests are still required for a polished general release. CI tests protocol/system memory and actually installs, repairs/updates, verifies registration, runs the installed host, removes it twice, and verifies unrelated files survive on disposable runner accounts. These checks passed on Windows x64, macOS Intel/Apple Silicon, and Linux x64/ARM64. They do not prove every user's Firefox installation works. Windows ARM64 is built but not executed in this initial matrix.
-
-## Build and contribute
-
-The public **RamRatio-Desktop-Helper** repository remains the source of truth for helper binaries and releases. The private RamRatio extension repository now contains a reviewed, pinned copy of public helper 0.3.0, with source-hash verification and an isolated .NET test workflow. Future helper changes must be deliberately synchronized and retested; publishing remains controlled from this public repository. The Firefox extension itself does not require any source change for this installer fix.
-
-With .NET SDK 10 and PowerShell, run `./tools/package.ps1 -Runtime win-x64` (or the matching Unix runtime on a Unix host). Run `node tools/test-helper.mjs artifacts/win-x64/RamRatio.DesktopHelper.Setup.exe`. The installer integration test requires explicit opt-in on a disposable CI account; do not run it on a personal workstation. Six-platform GitHub Actions builds preserve Unix executable permissions, bundle the exact .NET runtime license/notices, generate checksums, and can publish a tested preview with matching helper source.
-
-Open an issue with platform, processor architecture, Firefox/add-on/helper versions, sanitized error text, and reproduction steps. Submit focused pull requests with validation. Useful next work: signed/notarized installers, a graphical accessible setup interface, clean-account Firefox install/update/remove tests, sandboxed Linux Firefox support, and more complete process-memory attribution. Never post personal URLs, credentials, or private files.
+The public source and cross-platform builds are validated with automated tests. **Real Firefox end-to-end testing and code signing are still outstanding** for a stable release.

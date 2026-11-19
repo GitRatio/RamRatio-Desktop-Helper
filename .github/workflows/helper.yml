@@ -52,15 +52,63 @@ jobs:
           $suffix = if ($IsWindows) { '.exe' } else { '' }
           node tools/test-installer.mjs "artifacts/${{ matrix.runtime }}/RamRatio.DesktopHelper.Setup$suffix"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - if: startsWith(matrix.runtime, 'win-')
+        name: Verify single-file Windows installer output
+        shell: pwsh
+        run: |
+          $installer = "artifacts/RamRatio-DesktopHelper-Setup-${{ matrix.runtime }}.exe"
+          if (!(Test-Path -LiteralPath $installer)) { throw "Missing standalone Windows installer: $installer" }
+          if ((Get-Item -LiteralPath $installer).Length -lt 100000) { throw "Installer unexpectedly small" }
+      - if: matrix.runtime == 'win-x64'
+        name: Verify bundled native host without installing
+        shell: pwsh
+        run: |
+          node tools/test-windows-installer.mjs "artifacts/RamRatio-DesktopHelper-Setup-win-x64.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - if: startsWith(matrix.runtime, 'osx-')
+        name: Verify macOS setup app and DMG
+        shell: pwsh
+        run: |
+          $app = "artifacts/RamRatio-DesktopHelper-Setup-${{ matrix.runtime }}.app"
+          $appZip = "artifacts/RamRatio-DesktopHelper-Setup-${{ matrix.runtime }}.app.zip"
+          if (!(Test-Path -LiteralPath $appZip)) { throw "Missing macOS app ZIP" }
+          & unzip -tq $appZip
+          if ($LASTEXITCODE -ne 0) { throw 'App ZIP integrity failed' }
+          $dmg = "artifacts/RamRatio-DesktopHelper-Setup-${{ matrix.runtime }}.dmg"
+          & plutil -lint (Join-Path $app "Contents/Info.plist")
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & sh -n (Join-Path $app "Contents/MacOS/RamRatioSetup")
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (Test-Path -LiteralPath $dmg) {
+            & hdiutil verify $dmg
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - if: startsWith(matrix.runtime, 'linux-')
+        name: Verify Linux one-file installer and integrity protection
+        shell: pwsh
+        run: |
+          $runFile = "artifacts/RamRatio-DesktopHelper-Setup-${{ matrix.runtime }}.run"
+          if (!(Test-Path -LiteralPath $runFile)) { throw "Missing self-extracting Linux setup" }
+          & sh $runFile --verify-payload
+          if ($LASTEXITCODE -ne 0) { throw 'Linux package integrity failed' }
+          & sh $runFile --version
+          if ($LASTEXITCODE -ne 0) { throw 'Linux bundled executable failed to start' }
       - uses: actions/upload-artifact@v6
         with:
           name: package-${{ matrix.runtime }}
           path: |
             artifacts/*.zip
+            artifacts/RamRatio-DesktopHelper-Setup-win-*.exe
+            artifacts/RamRatio-DesktopHelper-Setup-osx-*.dmg
+            artifacts/RamRatio-DesktopHelper-Setup-linux-*.run
             artifacts/*.tar.gz
             artifacts/SHA256SUMS-*.txt
   release:
-    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    # A reviewed [publish-preview] squash-merge can publish once after every
+    # matrix job succeeds; ordinary pushes do not produce automatic releases.
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.publish) ||
+      (github.event_name == 'push' && contains(github.event.head_commit.message, '[publish-preview]'))
     needs: build
     runs-on: ubuntu-24.04
     permissions:

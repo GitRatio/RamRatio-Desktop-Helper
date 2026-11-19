@@ -1,0 +1,70 @@
+#!/bin/sh
+# RamRatio Linux single-file, self-extracting installer. No sudo or network.
+set -eu
+tmp="$(mktemp -d "${TMPDIR:-/tmp}/ramratio-setup.XXXXXXXX")"
+trap 'rm -rf -- "$tmp"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+line="$(awk '/^__RAMRATIO_BINARY_BELOW__$/ {print NR + 1; exit}' "$0")"
+if [ -z "$line" ]; then echo "Embedded helper marker missing." >&2; exit 2; fi
+helper="$tmp/RamRatio.DesktopHelper.Setup"
+tail -n "+$line" "$0" > "$helper"
+expected="__EXPECTED_SHA256__"
+if command -v sha256sum >/dev/null 2>&1; then
+  actual="$(sha256sum "$helper" | awk '{print $1}')"
+elif command -v shasum >/dev/null 2>&1; then
+  actual="$(shasum -a 256 "$helper" | awk '{print $1}')"
+else
+  echo "Cannot verify bundled host: SHA-256 tool missing. Nothing installed." >&2
+  exit 2
+fi
+if [ "$actual" != "$expected" ]; then
+  echo "Embedded helper checksum failed. Nothing installed." >&2
+  exit 2
+fi
+chmod 700 "$helper"
+case "${1:-}" in
+  --verify-payload) echo "Embedded native helper verified."; exit 0 ;;
+  --version) "$helper" --version; exit $? ;;
+  --diagnose) "$helper" --diagnose; exit $? ;;
+  "") ;;
+  *) echo "Unknown option. Use --verify-payload, --version, or --diagnose." >&2; exit 2 ;;
+esac
+choice=""
+if command -v zenity >/dev/null 2>&1 && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+  choice="$(zenity --list --title="RamRatio Desktop Helper" --text="Optional local memory statistics. No administrator rights." --column="Action" "Install / Update" "Remove" "Check status" --height=245 --width=420 2>/dev/null)" || exit 0
+elif command -v kdialog >/dev/null 2>&1 && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+  choice="$(kdialog --menu "RamRatio Desktop Helper: choose an action" I "Install / Update" U "Remove" D "Check status" 2>/dev/null)" || exit 0
+else
+  printf 'RamRatio Desktop Helper (optional local stats)\n[I] Install/Update   [U] Remove   [D] Check status   [Enter] Cancel\n'
+  IFS= read -r choice || exit 0
+fi
+case "$choice" in
+  "Install / Update"|I|i) action=I ;;
+  "Remove"|U|u) action=U ;;
+  "Check status"|D|d) "$helper" --diagnose; exit $? ;;
+  *) exit 0 ;;
+esac
+if [ "$action" = U ] && [ -z "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+  printf 'Remove the local helper? Type yes to confirm: '
+  IFS= read -r confirm || exit 0
+  [ "$confirm" = yes ] || exit 0
+fi
+if output="$(printf '%s\n' "$action" | "$helper" 2>&1)"; then
+  printf '%s\n' "$output"
+  msg="Complete. In Firefox, enable Advanced System Stats and Check connection."
+  [ "$action" = U ] && msg="Helper removed. Your Firefox extension is unchanged."
+  if command -v zenity >/dev/null 2>&1 && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+    zenity --info --title="RamRatio Setup" --text="$msg" 2>/dev/null || :
+  elif command -v kdialog >/dev/null 2>&1 && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+    kdialog --msgbox "$msg" 2>/dev/null || :
+  fi
+else
+  printf '%s\n' "$output" >&2
+  if command -v zenity >/dev/null 2>&1 && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+    zenity --error --title="RamRatio Setup" --text="Setup failed. Use --diagnose or the fallback CLI." 2>/dev/null || :
+  fi
+  exit 1
+fi
+exit 0
+__RAMRATIO_BINARY_BELOW__
