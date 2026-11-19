@@ -50,7 +50,7 @@ if ($Runtime.StartsWith('win-')) {
         $digest = (Get-FileHash -Algorithm SHA256 -LiteralPath $embeddedHost).Hash.ToUpperInvariant()
         $generated = 'namespace RamRatioInstaller; internal static class PayloadHash { internal const string Sha256 = "' + $digest + '"; }'
         [IO.File]::WriteAllText($generatedHash, $generated + [Environment]::NewLine)
-        dotnet publish (Join-Path $uiDir 'RamRatio.WindowsInstaller.csproj') -c Release -r $Runtime --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o $uiOutput
+        dotnet publish (Join-Path $uiDir 'RamRatio.WindowsInstaller.csproj') -c Release -r $Runtime --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o $uiOutput
         if ($LASTEXITCODE -ne 0) { throw 'Windows graphical installer build failed' }
         $guiExe = Join-Path $uiOutput 'RamRatio-DesktopHelper-Setup.exe'
         if (!(Test-Path -LiteralPath $guiExe)) { throw 'Graphical installer EXE not produced' }
@@ -95,14 +95,9 @@ if ($Runtime.StartsWith('osx-')) {
     & ditto -c -k --sequesterRsrc --keepParent $app $appZip
     if ($LASTEXITCODE -ne 0) { throw 'macOS app ZIP build failed' }
     $hashTargets += $appZip
-    # Apple's Intel runner has a constrained disk. Building a mounted DMG there
-    # may fail with ENOSPC; offer the same double-clickable app as a ZIP instead.
-    if ($Runtime -eq 'osx-arm64') {
-        $dmg = Join-Path $projectRoot "artifacts/RamRatio-DesktopHelper-Setup-$Runtime.dmg"
-        & hdiutil create -ov -volname 'RamRatio Desktop Helper Setup' -srcfolder $app -format UDZO $dmg
-        if ($LASTEXITCODE -ne 0) { throw 'macOS DMG build failed' }
-        $hashTargets += $dmg
-    }
+    # Both architectures use a reliable ZIP app bundle. hdiutil's temporary
+    # mounted volume intermittently exhausts hosted macOS runner storage;
+    # a signed and notarized DMG can be added in a later stable release.
 }
 # Linux: one downloadable self-extracting .run file, no root installer;
 # prefer zenity/kdialog dialogs when available, otherwise terminal prompt.
@@ -113,11 +108,14 @@ if ($Runtime.StartsWith('linux-')) {
     $header = [IO.File]::ReadAllText($templatePath).Replace('__EXPECTED_SHA256__', $digest)
     if (!$header.EndsWith("`n")) { throw 'Missing binary marker newline in Linux installer' }
     [IO.File]::WriteAllText($runFile, $header, [Text.UTF8Encoding]::new($false))
+    # Compress the bundled native host; the .run still verifies the uncompressed
+    # SHA-256 before any install or status action.
     $stream = [IO.File]::Open($runFile, [IO.FileMode]::Append, [IO.FileAccess]::Write, [IO.FileShare]::None)
+    $inputStream = [IO.File]::OpenRead($exe)
     try {
-        $payload = [IO.File]::ReadAllBytes($exe)
-        $stream.Write($payload, 0, $payload.Length)
-    } finally { $stream.Dispose() }
+        $gzip = [IO.Compression.GZipStream]::new($stream, [IO.Compression.CompressionLevel]::Optimal, $true)
+        try { $inputStream.CopyTo($gzip) } finally { $gzip.Dispose() }
+    } finally { $inputStream.Dispose(); $stream.Dispose() }
     & chmod +x $runFile
     if ($LASTEXITCODE -ne 0) { throw 'Linux installer chmod failed' }
     $hashTargets += $runFile
