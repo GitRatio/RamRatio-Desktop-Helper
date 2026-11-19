@@ -52,11 +52,25 @@ jobs:
           $suffix = if ($IsWindows) { '.exe' } else { '' }
           node tools/test-installer.mjs "artifacts/${{ matrix.runtime }}/RamRatio.DesktopHelper.Setup$suffix"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - if: startsWith(matrix.runtime, 'win-')
+        name: Verify single-file Windows installer output
+        shell: pwsh
+        run: |
+          $installer = "artifacts/RamRatio-DesktopHelper-Setup-${{ matrix.runtime }}.exe"
+          if (!(Test-Path -LiteralPath $installer)) { throw "Missing standalone Windows installer: $installer" }
+          if ((Get-Item -LiteralPath $installer).Length -lt 100000) { throw "Installer unexpectedly small" }
+      - if: matrix.runtime == 'win-x64'
+        name: Verify bundled native host without installing
+        shell: pwsh
+        run: |
+          node tools/test-windows-installer.mjs "artifacts/RamRatio-DesktopHelper-Setup-win-x64.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v6
         with:
           name: package-${{ matrix.runtime }}
           path: |
             artifacts/*.zip
+            artifacts/RamRatio-DesktopHelper-Setup-win-*.exe
             artifacts/*.tar.gz
             artifacts/SHA256SUMS-*.txt
   release:
